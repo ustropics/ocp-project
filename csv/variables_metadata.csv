@@ -1,0 +1,11 @@
+variable,dimensions,shape,data_type,long_name,units
+MT,MT,"(1,)",float64,time,days since 1900-12-31 00:00:00
+Date,MT,"(1,)",float64,date,day as %Y%m%d.%f
+Depth,Depth,"(40,)",float32,,m
+Latitude,Latitude,"(385,)",float32,,degrees_north
+Longitude,Longitude,"(525,)",float32,,degrees_east
+u,"MT, Depth, Latitude, Longitude","(1, 40, 385, 525)",float32,u-veloc. [01.0H],m/s
+v,"MT, Depth, Latitude, Longitude","(1, 40, 385, 525)",float32,v-veloc. [01.0H],m/s
+w_velocity,"MT, Depth, Latitude, Longitude","(1, 40, 385, 525)",float32,w-veloc. [01.0H],m/s
+water_temp,"MT, Depth, Latitude, Longitude","(1, 40, 385, 525)",float32,temp [01.0H],degC
+salinity,"MT, Depth, Latitude, Longitude","(1, 40, 385, 525)",float32,salinity [01.0H],psu

@@ -1,0 +1,11 @@
+variable,dimensions,shape,data_type,long_name,units
+MT,MT,"(1,)",float64,time,days since 1900-12-31 00:00:00
+Date,MT,"(1,)",float64,date,day as %Y%m%d.%f
+Latitude,Latitude,"(385,)",float32,,degrees_north
+Longitude,Longitude,"(525,)",float32,,degrees_east
+ssh,"MT, Latitude, Longitude","(1, 385, 525)",float32, sea surf. height  [01.0H],m
+mixed_layer_thickness,"MT, Latitude, Longitude","(1, 385, 525)",float32,mix.layr.thickness [01.0H],m
+u_barotropic_velocity,"MT, Latitude, Longitude","(1, 385, 525)",float32,    baro. u-vel.[01.0H],m/s
+v_barotropic_velocity,"MT, Latitude, Longitude","(1, 385, 525)",float32,    baro. v-vel. [01.0H],m/s
+wnd_ewd,"MT, Latitude, Longitude","(1, 385, 525)",float32,  Eward 10m wind,m/s
+wnd_nwd,"MT, Latitude, Longitude","(1, 385, 525)",float32,  Nward 10m wind,m/s
