@@ -7,6 +7,7 @@
 import xarray as xr
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib import ticker
 import cartopy.crs as ccrs
 import cartopy.feature as cfeature
 from datetime import datetime
@@ -16,7 +17,6 @@ from netCDF4 import Dataset  # <-- Critical for robust _FillValue
 # ------------------------------------------------------------------
 # 1. Variables and file paths
 # ------------------------------------------------------------------
-day = '001'
 cmap = 'Spectral_r'
 
 file_path = f'output/data/25deg/2d/gomb4_daily_2024_{day}_2d.nc'
@@ -51,7 +51,12 @@ date_obj = datetime.strptime(date_str, "%Y%m%d")
 
 month_name = date_obj.strftime("%B")
 day = date_obj.day
-ordinal = lambda n: "%d%s" % (n, "tsnrhtdd"[(n//10%10!=1)*(n%10<4)*n%10::4])
+
+
+def ordinal(n): return "%d%s" % (
+    n, "tsnrhtdd"[(n//10 % 10 != 1)*(n % 10 < 4)*n % 10::4])
+
+
 day_str = ordinal(day)
 timestamp = f"{month_name} {day_str}, {date_obj.year}"
 print(f"Data date: {timestamp}")
@@ -61,8 +66,8 @@ print(f"Data date: {timestamp}")
 # ------------------------------------------------------------------
 ssh_valid = ssh.where(ssh != fill_value)
 
-ssh_min  = float(ssh_valid.min())
-ssh_max  = float(ssh_valid.max())
+ssh_min = float(ssh_valid.min())
+ssh_max = float(ssh_valid.max())
 ssh_mean = float(ssh_valid.mean())
 
 print(f"SSH  min : {ssh_min: .4f} m")
@@ -74,9 +79,10 @@ print(f"SSH mean : {ssh_mean: .4f} m")
 # ------------------------------------------------------------------
 fig = plt.figure(figsize=(11, 8))
 ax = plt.axes(projection=ccrs.PlateCarree())
-ax.set_extent([lon.min(), lon.max(), lat.min(), lat.max()], crs=ccrs.PlateCarree())
+ax.set_extent([lon.min(), lon.max(), lat.min(),
+              lat.max()], crs=ccrs.PlateCarree())
 
-levels = np.linspace(-1.0, 0.5, 41)
+levels = np.linspace(-1.1, 0.5, 40)
 
 # Filled contours
 cf = ax.contourf(lon, lat, ssh, levels=levels,
@@ -95,9 +101,17 @@ ax.clabel(cs, inline=True, fontsize=9, fmt='%.2f',
 # colour-bar, coastlines, etc. (unchanged)
 cbar = plt.colorbar(cf, ax=ax, shrink=0.7, pad=0.06)
 cbar.set_label('Sea-Surface Height (m)', fontsize=12)
+cbar.ax.yaxis.set_major_formatter(ticker.FormatStrFormatter('%.2f'))
 
-ax.coastlines(resolution='10m')
-ax.add_feature(cfeature.LAND, facecolor='#dddddd')
+ax.coastlines(resolution='10m', linewidth=1, color='black', zorder=3)
+ax.add_feature(cfeature.LAND, facecolor="#9c6b00", zorder=2)
+ax.add_feature(cfeature.BORDERS, linewidth=0.5, zorder=3, color='black')
+ax.add_feature(cfeature.LAKES, facecolor='#a0c8f0',
+               edgecolor='black', linewidth=0.5, zorder=3)
+
+# add state borders
+ax.add_feature(cfeature.STATES, linewidth=0.5, zorder=3,
+               facecolor='none', edgecolor='black')
 
 gl = ax.gridlines(draw_labels=True, linestyle='--', color='gray', alpha=0.5)
 gl.top_labels = gl.right_labels = False

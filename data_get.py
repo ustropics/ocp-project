@@ -1,87 +1,83 @@
 from imports import *
 from config import *
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from bs4 import BeautifulSoup
+import os
+import requests
 
 
-def get_3d_data():
-    # Optional: Directory to save files (create if not exists)
-    os.makedirs(dir_data_3d, exist_ok=True)
+def download_file(file_name, dir_path, url_base):
+    """Download a single file with streaming and error handling."""
+    local_path = os.path.join(dir_path, file_name)
+    if os.path.exists(local_path):
+        print(f"{file_name} already exists. Skipping.")
+        return file_name, True
 
-    # Fetch the catalog page
-    response = requests.get(url_catalog)
+    download_url = url_base + file_name
+    print(f"Downloading {file_name} from {download_url}")
+
+    try:
+        with requests.get(download_url, stream=True, timeout=30) as r:
+            r.raise_for_status()
+            with open(local_path, 'wb') as f:
+                for chunk in r.iter_content(chunk_size=8192):
+                    if chunk:
+                        f.write(chunk)
+        print(f"Downloaded {file_name} successfully.")
+        return file_name, True
+    except requests.exceptions.RequestException as e:
+        print(f"Failed to download {file_name}: {e}")
+        return file_name, False
+
+
+def fetch_file_list(suffix, url_catalog):
+    """Fetch and parse catalog, return list of filenames ending with suffix."""
+    response = requests.get(url_catalog, timeout=30)
     if response.status_code != 200:
-        print(f"Failed to fetch catalog: {response.status_code}")
-        exit(1)
+        raise RuntimeError(f"Failed to fetch catalog: {response.status_code}")
 
-    # Parse the HTML
     soup = BeautifulSoup(response.text, 'html.parser')
-
-    # Find all <a> tags and extract file names ending with _3z.nc
     links = soup.find_all('a')
-    file_names = [link.text.strip() for link in links if link.text.strip().endswith('_3z.nc')]
+    return [link.text.strip() for link in links if link.text.strip().endswith(suffix)]
+
+
+def download_dataset(suffix, dir_path, url_base, max_workers=6):
+    """Download all files with given suffix in parallel."""
+    os.makedirs(dir_path, exist_ok=True)
+
+    try:
+        file_names = fetch_file_list(suffix, url_catalog)
+    except Exception as e:
+        print(e)
+        return
 
     if not file_names:
-        print("No _3z.nc files found in the catalog.")
-        exit(0)
+        print(f"No files ending with '{suffix}' found in catalog.")
+        return
 
-    # Download each file if it doesn't exist locally
-    for file_name in file_names:
-        local_path = os.path.join(dir_data_3d, file_name)
-        if os.path.exists(local_path):
-            print(f"{file_name} already exists. Skipping download.")
-            continue
-        
-        download_url = url_data + file_name
-        print(f"Downloading {file_name} from {download_url}")
-        
-        # Stream the download for large files
-        try:
-            with requests.get(download_url, stream=True) as r:
-                r.raise_for_status()
-                with open(local_path, 'wb') as f:
-                    for chunk in r.iter_content(chunk_size=8192):
-                        f.write(chunk)
-            print(f"Downloaded {file_name} successfully.")
-        except requests.exceptions.RequestException as e:
-            print(f"Failed to download {file_name}: {e}")
+    print(
+        f"Found {len(file_names)} files to download (max {max_workers} concurrently).")
+
+    # Use ThreadPoolExecutor for parallel downloads
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        future_to_file = {
+            executor.submit(download_file, fname, dir_path, url_base): fname
+            for fname in file_names
+        }
+
+        for future in as_completed(future_to_file):
+            fname = future_to_file[future]
+            try:
+                file_name, success = future.result()
+                # Optional: track failed downloads
+            except Exception as exc:
+                print(f"{fname} generated an exception: {exc}")
+
+
+# === Main functions ===
+def get_3d_data():
+    download_dataset('_3z.nc', dir_data_3d, url_data, max_workers=6)
+
 
 def get_2d_data():
-    # Optional: Directory to save files (create if not exists)
-    os.makedirs(dir_data_2d, exist_ok=True)
-
-    # Fetch the catalog page
-    response = requests.get(url_catalog)
-    if response.status_code != 200:
-        print(f"Failed to fetch catalog: {response.status_code}")
-        exit(1)
-
-    # Parse the HTML
-    soup = BeautifulSoup(response.text, 'html.parser')
-
-    # Find all <a> tags and extract file names ending with _3z.nc
-    links = soup.find_all('a')
-    file_names = [link.text.strip() for link in links if link.text.strip().endswith('_2d.nc')]
-
-    if not file_names:
-        print("No _2d.nc files found in the catalog.")
-        exit(0)
-
-    # Download each file if it doesn't exist locally
-    for file_name in file_names:
-        local_path = os.path.join(dir_data_2d, file_name)
-        if os.path.exists(local_path):
-            print(f"{file_name} already exists. Skipping download.")
-            continue
-        
-        download_url = url_data + file_name
-        print(f"Downloading {file_name} from {download_url}")
-        
-        # Stream the download for large files
-        try:
-            with requests.get(download_url, stream=True) as r:
-                r.raise_for_status()
-                with open(local_path, 'wb') as f:
-                    for chunk in r.iter_content(chunk_size=8192):
-                        f.write(chunk)
-            print(f"Downloaded {file_name} successfully.")
-        except requests.exceptions.RequestException as e:
-            print(f"Failed to download {file_name}: {e}")
+    download_dataset('_2d.nc', dir_data_2d, url_data, max_workers=6)
